@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Biblioteca Personal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-icon">📚</span>
+    <span class="brand-name">Biblioteca</span>
+  </div>
+  <ul class="nav-list">
+    <li class="nav-item active" data-view="library">
+      <span class="nav-icon">◈</span> Colección
+    </li>
+    <li class="nav-item" data-view="add">
+      <span class="nav-icon">＋</span> Añadir libro
+    </li>
+    <li class="nav-item" data-view="stats">
+      <span class="nav-icon">◉</span> Estadísticas
+    </li>
+  </ul>
+  <div class="sidebar-footer">
+    <span id="total-count">0 libros</span>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+
+  <!-- HEADER -->
+  <header class="top-bar">
+    <button class="menu-toggle" id="menuToggle">☰</button>
+    <div class="search-wrapper">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Buscar título, autor, temática…" />
+    </div>
+    <div class="filter-group">
+      <select id="filterStatus">
+        <option value="">Todos los estados</option>
+        <option value="Leído">Leído</option>
+        <option value="En curso">En curso</option>
+        <option value="Pendiente">Pendiente</option>
+      </select>
+      <select id="filterTheme">
+        <option value="">Todas las temáticas</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- VIEWS -->
+  <section id="view-library" class="view active">
+    <div class="view-header">
+      <h1 class="view-title">Mi Colección</h1>
+      <div class="view-meta" id="libraryMeta">Cargando…</div>
+    </div>
+    <div id="bookGrid" class="book-grid"></div>
+    <div id="emptyState" class="empty-state hidden">
+      <div class="empty-icon">📖</div>
+      <p>No se encontraron libros con estos filtros.</p>
+    </div>
+  </section>
+
+  <section id="view-add" class="view">
+    <div class="view-header">
+      <h1 class="view-title" id="formTitle">Añadir libro</h1>
+    </div>
+    <form id="bookForm" class="book-form">
+      <input type="hidden" id="editId" value="" />
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Título *</label>
+          <input type="text" id="fTitle" required placeholder="Título del libro" />
+        </div>
+        <div class="form-group">
+          <label>Autor *</label>
+          <input type="text" id="fAuthor" required placeholder="Nombre del autor" />
+        </div>
+        <div class="form-group">
+          <label>Editorial</label>
+          <input type="text" id="fEditorial" placeholder="Editorial" />
+        </div>
+        <div class="form-group">
+          <label>Precio (€)</label>
+          <input type="number" id="fPrice" step="0.01" min="0" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Nº de páginas</label>
+          <input type="number" id="fPages" min="1" placeholder="Páginas" />
+        </div>
+        <div class="form-group">
+          <label>Temática</label>
+          <input type="text" id="fTheme" placeholder="Ej: Filosofía, Historia…" list="themeList" />
+          <datalist id="themeList"></datalist>
+        </div>
+        <div class="form-group">
+          <label>Estado *</label>
+          <select id="fStatus" required>
+            <option value="Pendiente">Pendiente de leer</option>
+            <option value="En curso">En curso</option>
+            <option value="Leído">Leído</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notas personales</label>
+          <textarea id="fNotes" placeholder="Anotaciones, valoración…" rows="3"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>URL portada (opcional)</label>
+          <input type="url" id="fCover" placeholder="https://…" />
+          <small>Puedes buscar la portada en Google Imágenes y pegar la URL aquí.</small>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="cancelEdit">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Guardar libro</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="view-stats" class="view">
+    <div class="view-header">
+      <h1 class="view-title">Estadísticas</h1>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card" id="s-total">
+        <span class="stat-label">Total libros</span>
+        <span class="stat-value" id="sv-total">0</span>
+      </div>
+      <div class="stat-card accent" id="s-read">
+        <span class="stat-label">Leídos</span>
+        <span class="stat-value" id="sv-read">0</span>
+      </div>
+      <div class="stat-card" id="s-reading">
+        <span class="stat-label">En curso</span>
+        <span class="stat-value" id="sv-reading">0</span>
+      </div>
+      <div class="stat-card" id="s-pending">
+        <span class="stat-label">Pendientes</span>
+        <span class="stat-value" id="sv-pending">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">% Leídos</span>
+        <span class="stat-value" id="sv-pct">0%</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Páginas totales</span>
+        <span class="stat-value" id="sv-pages">–</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Páginas leídas</span>
+        <span class="stat-value" id="sv-pages-read">–</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Gasto total</span>
+        <span class="stat-value" id="sv-spend">–</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Autores únicos</span>
+        <span class="stat-value" id="sv-authors">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Temáticas</span>
+        <span class="stat-value" id="sv-themes">0</span>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3 class="chart-title">Estado de la colección</h3>
+        <canvas id="chartStatus"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3 class="chart-title">Distribución por temática</h3>
+        <canvas id="chartTheme"></canvas>
+      </div>
+      <div class="chart-card wide">
+        <h3 class="chart-title">Top 10 autores más representados</h3>
+        <canvas id="chartAuthors"></canvas>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- MODAL: detail view -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-inner" id="modalContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
