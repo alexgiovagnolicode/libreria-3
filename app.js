@@ -356,7 +356,7 @@ function renderLibrary() {
 
     const emoji = themeEmoji(book.theme);
     const coverHTML = book.cover
-      ? `<div class="book-cover" data-id="${book.id}"><img src="${book.cover}" alt="portada" /></div>`
+      ? `<div class="book-cover" data-cover-id="${book.id}"></div>`
       : `<div class="book-cover-placeholder">${emoji}</div>`;
 
     card.innerHTML = `
@@ -389,19 +389,19 @@ function renderLibrary() {
 
     bookGrid.appendChild(card);
 
-    // Handle cover image load/error cleanly after DOM insertion
+    // Build image via JS - safest cross-browser/mobile approach
     if (book.cover) {
-      const img = card.querySelector('.book-cover img');
-      if (img) {
-        img.style.opacity = '0';
-        img.style.transition = 'opacity 0.3s';
-        img.addEventListener('load', () => { img.style.opacity = '1'; });
-        img.addEventListener('error', () => {
-          const coverDiv = card.querySelector('.book-cover');
-          if (coverDiv) {
-            coverDiv.outerHTML = `<div class="book-cover-placeholder">${emoji}</div>`;
-          }
-        });
+      const coverDiv = card.querySelector('[data-cover-id]');
+      if (coverDiv) {
+        const img = new Image();
+        img.alt = 'portada';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s';
+        img.onload = () => { img.style.opacity = '1'; };
+        img.onerror = () => {
+          coverDiv.outerHTML = `<div class="book-cover-placeholder">${emoji}</div>`;
+        };
+        img.src = book.cover;
+        coverDiv.appendChild(img);
       }
     }
   });
@@ -428,7 +428,7 @@ function openModal(id) {
   const book = books.find(b => b.id === id);
   if (!book) return;
   const coverHTML = book.cover
-    ? `<div class="modal-cover-wrap" id="modal-cover-img"><img src="${book.cover}" alt="portada" /></div>`
+    ? `<div class="modal-cover-wrap" id="modal-cover-img"></div>`
     : `<div class="modal-cover-wrap">${themeEmoji(book.theme)}</div>`;
 
   modalContent.innerHTML = `
@@ -450,14 +450,19 @@ function openModal(id) {
   `;
   modal.classList.remove('hidden');
 
-  // Handle modal image cleanly after DOM insertion
+  // Build modal image via JS - safest cross-browser/mobile approach
   if (book.cover) {
-    const modalImg = document.querySelector('#modal-cover-img img');
-    if (modalImg) {
-      modalImg.addEventListener('error', () => {
-        const wrap = document.getElementById('modal-cover-img');
-        if (wrap) wrap.innerHTML = `<span style="font-size:64px">${themeEmoji(book.theme)}</span>`;
-      });
+    const modalWrap = document.getElementById('modal-cover-img');
+    if (modalWrap) {
+      const img = new Image();
+      img.alt = 'portada';
+      img.style.cssText = 'width:100%;max-height:280px;object-fit:cover;display:block;opacity:0;transition:opacity 0.3s';
+      img.onload = () => { img.style.opacity = '1'; };
+      img.onerror = () => {
+        modalWrap.innerHTML = `<span style="font-size:64px">${themeEmoji(book.theme)}</span>`;
+      };
+      img.src = book.cover;
+      modalWrap.appendChild(img);
     }
   }
 }
