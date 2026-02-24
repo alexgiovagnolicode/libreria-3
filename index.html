@@ -15,8 +15,8 @@
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <span class="brand-icon">📚</span>
-    <span class="brand-name">Biblioteca</span>
+    <img src="logo.jpg" alt="Logo" class="brand-logo" />
+    <span class="brand-name">Biblioteca Personal</span>
   </div>
   <ul class="nav-list">
     <li class="nav-item active" data-view="library">
@@ -31,6 +31,11 @@
   </ul>
   <div class="sidebar-footer">
     <span id="total-count">0 libros</span>
+    <div class="backup-buttons">
+      <button class="btn-backup" id="exportBtn">⬇ Exportar</button>
+      <button class="btn-backup" id="importBtn">⬆ Importar</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" />
+    </div>
   </div>
 </nav>
 

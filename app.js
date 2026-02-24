@@ -307,17 +307,21 @@ function renderLibrary() {
     card.dataset.id = book.id;
 
     const coverHTML = book.cover
-      ? `<div class="book-cover" style="height:160px;overflow:hidden;"><img src="${book.cover}" alt="portada" onerror="this.parentNode.innerHTML='<div style=\\'font-size:40px;height:160px;display:flex;align-items:center;justify-content:center;\\'>${themeEmoji(book.theme)}</div>'" /></div>`
+      ? `<div class="book-cover"><img src="${book.cover}" alt="portada" onerror="this.parentNode.outerHTML='<div class=\"book-cover-placeholder\">${themeEmoji(book.theme)}</div>'" /></div>`
       : `<div class="book-cover-placeholder">${themeEmoji(book.theme)}</div>`;
 
     card.innerHTML = `
       ${coverHTML}
       <div class="book-info">
-        <div class="book-title">${book.title}</div>
-        <div class="book-author">${book.author || '—'}</div>
+        <div class="book-title-col">
+          <div class="book-title">${book.title}</div>
+          <div class="book-author">${book.author || '—'}</div>
+        </div>
         <div class="book-meta-row">
-          <span class="book-theme-tag">${book.theme || '—'}</span>
+          ${book.theme ? `<span class="book-theme-tag">${book.theme}</span>` : ''}
           <span class="status-badge ${badgeClass(book.status)}">${badgeLabel(book.status)}</span>
+          ${book.pages ? `<span style="font-size:12px;color:var(--text-dim)">${book.pages} pág.</span>` : ''}
+          ${book.price != null ? `<span style="font-size:12px;color:var(--text-dim)">${book.price.toFixed(2)} €</span>` : ''}
         </div>
       </div>
       <div class="book-actions">
@@ -327,7 +331,8 @@ function renderLibrary() {
     `;
 
     card.querySelector('.book-info').addEventListener('click', () => openModal(book.id));
-    card.querySelector('.book-cover-placeholder, .book-cover') && card.querySelector('.book-cover-placeholder') && card.querySelector('.book-cover-placeholder').addEventListener('click', () => openModal(book.id));
+    const coverEl = card.querySelector('.book-cover-placeholder') || card.querySelector('.book-cover');
+    if (coverEl) coverEl.addEventListener('click', () => openModal(book.id));
     card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openEdit(book.id); });
     card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteBook(book.id); });
 
@@ -502,12 +507,12 @@ function renderStats() {
 }
 
 function renderCharts(read, reading, pending, themes) {
-  const GOLD = '#c8a96e';
-  const SAGE = '#8fb8a0';
-  const DIM  = '#3a3a3e';
-  const MUTED = '#7a7870';
-  const gridColor = '#2a2a2e';
-  const textColor = '#7a7870';
+  const GOLD = '#8a6010';
+  const SAGE = '#2d6b47';
+  const DIM  = '#d0ccc5';
+  const MUTED = '#999890';
+  const gridColor = '#e8e4de';
+  const textColor = '#555550';
 
   Chart.defaults.color = textColor;
   Chart.defaults.font.family = "'Jost', sans-serif";
@@ -579,6 +584,47 @@ function showToast(msg, type = '') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.add('hidden'), 3000);
 }
+
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const data = JSON.stringify(books, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = `biblioteca-personal-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Copia de seguridad exportada ✓', 'success');
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('Formato inválido');
+      if (!confirm(`Se importarán ${imported.length} libros. Esto sustituirá tu biblioteca actual. ¿Continuar?`)) return;
+      books = imported;
+      saveBooks();
+      populateThemeFilter();
+      renderLibrary();
+      showToast(`${imported.length} libros importados correctamente ✓`, 'success');
+    } catch {
+      showToast('Error: el archivo no es válido', 'error');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
 
 // ─── INIT ────────────────────────────────────────────────────
 loadBooks();
