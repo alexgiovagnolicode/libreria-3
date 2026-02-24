@@ -356,7 +356,7 @@ function renderLibrary() {
 
     const emoji = themeEmoji(book.theme);
     const coverHTML = book.cover
-      ? `<div class="book-cover" id="cover-${book.id}"><img src="${book.cover}" alt="portada" onload="this.style.opacity=1" onerror="document.getElementById('cover-${book.id}').outerHTML='<div class=\"book-cover-placeholder\">${emoji}</div>'" style="opacity:0;transition:opacity 0.3s" /></div>`
+      ? `<div class="book-cover" data-id="${book.id}"><img src="${book.cover}" alt="portada" /></div>`
       : `<div class="book-cover-placeholder">${emoji}</div>`;
 
     card.innerHTML = `
@@ -388,6 +388,22 @@ function renderLibrary() {
     card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteBook(book.id); });
 
     bookGrid.appendChild(card);
+
+    // Handle cover image load/error cleanly after DOM insertion
+    if (book.cover) {
+      const img = card.querySelector('.book-cover img');
+      if (img) {
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s';
+        img.addEventListener('load', () => { img.style.opacity = '1'; });
+        img.addEventListener('error', () => {
+          const coverDiv = card.querySelector('.book-cover');
+          if (coverDiv) {
+            coverDiv.outerHTML = `<div class="book-cover-placeholder">${emoji}</div>`;
+          }
+        });
+      }
+    }
   });
 }
 
@@ -412,7 +428,7 @@ function openModal(id) {
   const book = books.find(b => b.id === id);
   if (!book) return;
   const coverHTML = book.cover
-    ? `<div class="modal-cover-wrap"><img src="${book.cover}" alt="portada" onerror="this.parentNode.innerHTML='<span style=\\'font-size:64px\\'>${themeEmoji(book.theme)}</span>'" /></div>`
+    ? `<div class="modal-cover-wrap" id="modal-cover-img"><img src="${book.cover}" alt="portada" /></div>`
     : `<div class="modal-cover-wrap">${themeEmoji(book.theme)}</div>`;
 
   modalContent.innerHTML = `
@@ -433,6 +449,17 @@ function openModal(id) {
     </div>
   `;
   modal.classList.remove('hidden');
+
+  // Handle modal image cleanly after DOM insertion
+  if (book.cover) {
+    const modalImg = document.querySelector('#modal-cover-img img');
+    if (modalImg) {
+      modalImg.addEventListener('error', () => {
+        const wrap = document.getElementById('modal-cover-img');
+        if (wrap) wrap.innerHTML = `<span style="font-size:64px">${themeEmoji(book.theme)}</span>`;
+      });
+    }
+  }
 }
 
 document.getElementById('modalClose').addEventListener('click', () => modal.classList.add('hidden'));
