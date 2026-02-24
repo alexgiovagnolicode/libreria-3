@@ -1,6 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
 // ============================================================
 // BIBLIOTECA PERSONAL — app.js
 // ============================================================
@@ -211,16 +208,16 @@ const firebaseConfig = {
   appId: "1:334443396499:web:8e7d6628492fa02ee3bc66"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
-const DOC_REF = doc(db, "biblioteca", "libros");
+const firebaseApp = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DOC_REF = db.collection("biblioteca").doc("libros");
 
 // ─── STORAGE ─────────────────────────────────────────────────
 async function loadBooks() {
   try {
     showLoadingOverlay(true);
-    const snap = await getDoc(DOC_REF);
-    if (snap.exists() && snap.data().books && snap.data().books.length > 0) {
+    const snap = await DOC_REF.get();
+    if (snap.exists && snap.data() && snap.data().books && snap.data().books.length > 0) {
       books = snap.data().books;
     } else {
       books = INITIAL_BOOKS.map((b, i) => ({ ...b, id: i + 1 }));
@@ -240,7 +237,7 @@ async function loadBooks() {
 
 async function saveBooks() {
   try {
-    await setDoc(DOC_REF, { books: books });
+    await DOC_REF.set({ books: books });
     // also save locally as backup
     localStorage.setItem('biblioteca_personal_v1', JSON.stringify(books));
   } catch(e) {
@@ -677,7 +674,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = async (ev) => {
     try {
       const imported = JSON.parse(ev.target.result);
       if (!Array.isArray(imported)) throw new Error('Formato inválido');
