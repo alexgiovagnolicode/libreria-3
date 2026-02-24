@@ -14,6 +14,7 @@
 
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
+  <button class="sidebar-toggle" id="sidebarToggle" title="Ocultar menú">‹</button>
   <div class="sidebar-brand">
     <img src="logo.jpg" alt="Logo" class="brand-logo" />
     <span class="brand-name">Biblioteca Personal</span>
@@ -108,6 +109,14 @@
           <datalist id="themeList"></datalist>
         </div>
         <div class="form-group">
+          <label>Comprado</label>
+          <label class="toggle-label">
+            <input type="checkbox" id="fPurchased" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">He comprado este libro</span>
+          </label>
+        </div>
+        <div class="form-group">
           <label>Estado *</label>
           <select id="fStatus" required>
             <option value="Pendiente">Pendiente de leer</option>
@@ -165,9 +174,13 @@
         <span class="stat-label">Páginas leídas</span>
         <span class="stat-value" id="sv-pages-read">–</span>
       </div>
-      <div class="stat-card">
-        <span class="stat-label">Gasto total</span>
+      <div class="stat-card accent">
+        <span class="stat-label">Gasto real (comprados)</span>
         <span class="stat-value" id="sv-spend">–</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Coste potencial colección</span>
+        <span class="stat-value" id="sv-potential">–</span>
       </div>
       <div class="stat-card">
         <span class="stat-label">Autores únicos</span>
@@ -207,6 +220,6 @@
 <!-- TOAST -->
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

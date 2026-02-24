@@ -1,3 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 // ============================================================
 // BIBLIOTECA PERSONAL — app.js
 // ============================================================
@@ -198,29 +201,69 @@ const INITIAL_BOOKS = [
 let books = [];
 let charts = {};
 
-// ─── STORAGE ─────────────────────────────────────────────────
-const STORAGE_KEY = 'biblioteca_personal_v1';
+// ─── FIREBASE ────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCuBkvEcKj5BKwgBuYOXG5Y2F8LeeMi0Jw",
+  authDomain: "biblioteca-personal-db29f.firebaseapp.com",
+  projectId: "biblioteca-personal-db29f",
+  storageBucket: "biblioteca-personal-db29f.firebasestorage.app",
+  messagingSenderId: "334443396499",
+  appId: "1:334443396499:web:8e7d6628492fa02ee3bc66"
+};
 
-function loadBooks() {
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const DOC_REF = doc(db, "biblioteca", "libros");
+
+// ─── STORAGE ─────────────────────────────────────────────────
+async function loadBooks() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      books = JSON.parse(raw);
+    showLoadingOverlay(true);
+    const snap = await getDoc(DOC_REF);
+    if (snap.exists() && snap.data().books && snap.data().books.length > 0) {
+      books = snap.data().books;
     } else {
       books = INITIAL_BOOKS.map((b, i) => ({ ...b, id: i + 1 }));
-      saveBooks();
+      await saveBooks();
     }
-  } catch {
-    books = INITIAL_BOOKS.map((b, i) => ({ ...b, id: i + 1 }));
+  } catch(e) {
+    console.error("Error cargando desde Firebase:", e);
+    // fallback to localStorage
+    const raw = localStorage.getItem('biblioteca_personal_v1');
+    books = raw ? JSON.parse(raw) : INITIAL_BOOKS.map((b, i) => ({ ...b, id: i + 1 }));
+  } finally {
+    showLoadingOverlay(false);
+    populateThemeFilter();
+    renderLibrary();
   }
 }
 
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+async function saveBooks() {
+  try {
+    await setDoc(DOC_REF, { books: books });
+    // also save locally as backup
+    localStorage.setItem('biblioteca_personal_v1', JSON.stringify(books));
+  } catch(e) {
+    console.error("Error guardando en Firebase:", e);
+    localStorage.setItem('biblioteca_personal_v1', JSON.stringify(books));
+    showToast('Sin conexión — guardado localmente', 'error');
+  }
 }
 
 function nextId() {
   return books.length ? Math.max(...books.map(b => b.id)) + 1 : 1;
+}
+
+function showLoadingOverlay(show) {
+  let overlay = document.getElementById('loadingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.innerHTML = '<div class="loading-spinner"></div><p>Cargando biblioteca…</p>';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(245,243,239,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:var(--font-body);color:var(--text-muted);font-size:14px;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = show ? 'flex' : 'none';
 }
 
 // ─── DOM REFS ─────────────────────────────────────────────────
@@ -255,6 +298,14 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.toggle('open');
+});
+
+// Sidebar collapse (desktop)
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('.main-content');
+  sidebar.classList.toggle('collapsed');
+  main.classList.toggle('sidebar-collapsed');
 });
 
 // ─── FILTER + RENDER ─────────────────────────────────────────
@@ -306,9 +357,10 @@ function renderLibrary() {
     card.className = 'book-card';
     card.dataset.id = book.id;
 
+    const emoji = themeEmoji(book.theme);
     const coverHTML = book.cover
-      ? `<div class="book-cover"><img src="${book.cover}" alt="portada" onerror="this.parentNode.outerHTML='<div class=\"book-cover-placeholder\">${themeEmoji(book.theme)}</div>'" /></div>`
-      : `<div class="book-cover-placeholder">${themeEmoji(book.theme)}</div>`;
+      ? `<div class="book-cover" id="cover-${book.id}"><img src="${book.cover}" alt="portada" onload="this.style.opacity=1" onerror="document.getElementById('cover-${book.id}').outerHTML='<div class=\"book-cover-placeholder\">${emoji}</div>'" style="opacity:0;transition:opacity 0.3s" /></div>`
+      : `<div class="book-cover-placeholder">${emoji}</div>`;
 
     card.innerHTML = `
       ${coverHTML}
@@ -325,6 +377,7 @@ function renderLibrary() {
         </div>
       </div>
       <div class="book-actions">
+        <button class="btn-icon purchased-btn ${book.purchased ? 'purchased-active' : ''}" data-id="${book.id}" title="${book.purchased ? 'Marcar como no comprado' : 'Marcar como comprado'}">${book.purchased ? '🛒 Comprado' : '🛒 Comprar'}</button>
         <button class="btn-icon edit-btn" data-id="${book.id}">✎ Editar</button>
         <button class="btn-icon danger delete-btn" data-id="${book.id}">✕ Eliminar</button>
       </div>
@@ -333,6 +386,7 @@ function renderLibrary() {
     card.querySelector('.book-info').addEventListener('click', () => openModal(book.id));
     const coverEl = card.querySelector('.book-cover-placeholder') || card.querySelector('.book-cover');
     if (coverEl) coverEl.addEventListener('click', () => openModal(book.id));
+    card.querySelector('.purchased-btn').addEventListener('click', (e) => { e.stopPropagation(); togglePurchased(book.id); });
     card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openEdit(book.id); });
     card.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteBook(book.id); });
 
@@ -400,6 +454,7 @@ function openEdit(id) {
   document.getElementById('fTheme').value = book.theme || '';
   document.getElementById('fStatus').value = book.status || 'Pendiente';
   document.getElementById('fNotes').value = book.notes || '';
+  document.getElementById('fPurchased').checked = book.purchased || false;
   document.getElementById('fCover').value = book.cover || '';
   formTitle.textContent = 'Editar libro';
   submitBtn.textContent = 'Actualizar libro';
@@ -414,6 +469,7 @@ function openEdit(id) {
 function resetForm() {
   editId.value = '';
   bookForm.reset();
+  document.getElementById('fPurchased').checked = false;
   formTitle.textContent = 'Añadir libro';
   submitBtn.textContent = 'Guardar libro';
 }
@@ -426,7 +482,7 @@ document.getElementById('cancelEdit').addEventListener('click', () => {
   document.getElementById('view-library').classList.add('active');
 });
 
-bookForm.addEventListener('submit', e => {
+bookForm.addEventListener('submit', async e => {
   e.preventDefault();
   const id = editId.value ? parseInt(editId.value) : null;
   const priceVal = document.getElementById('fPrice').value;
@@ -453,7 +509,7 @@ bookForm.addEventListener('submit', e => {
     showToast('Libro añadido a la biblioteca', 'success');
   }
 
-  saveBooks();
+  await saveBooks();
   populateThemeFilter();
   renderLibrary();
   resetForm();
@@ -465,13 +521,23 @@ bookForm.addEventListener('submit', e => {
 });
 
 // ─── DELETE ──────────────────────────────────────────────────
-function deleteBook(id) {
+async function deleteBook(id) {
   if (!confirm('¿Seguro que quieres eliminar este libro de tu biblioteca?')) return;
   books = books.filter(b => b.id !== id);
-  saveBooks();
+  await saveBooks();
   populateThemeFilter();
   renderLibrary();
   showToast('Libro eliminado', 'error');
+}
+
+// ─── TOGGLE PURCHASED ────────────────────────────────────────
+async function togglePurchased(id) {
+  const book = books.find(b => b.id === id);
+  if (!book) return;
+  book.purchased = !book.purchased;
+  await saveBooks();
+  renderLibrary();
+  showToast(book.purchased ? '🛒 Marcado como comprado' : 'Marcado como no comprado', 'success');
 }
 
 // ─── STATS ───────────────────────────────────────────────────
@@ -486,8 +552,10 @@ function renderStats() {
   const totalPages = booksWithPages.reduce((a, b) => a + b.pages, 0);
   const readPages  = books.filter(b => b.status === 'Leído' && b.pages).reduce((a, b) => a + b.pages, 0);
 
-  const booksWithPrice = books.filter(b => b.price != null);
-  const totalSpend = booksWithPrice.reduce((a, b) => a + b.price, 0);
+  const purchasedWithPrice = books.filter(b => b.purchased && b.price != null);
+  const totalSpend = purchasedWithPrice.reduce((a, b) => a + b.price, 0);
+  const allWithPrice = books.filter(b => b.price != null);
+  const potentialSpend = allWithPrice.reduce((a, b) => a + b.price, 0);
 
   const authors = new Set(books.map(b => b.author).filter(Boolean));
   const themes  = new Set(books.map(b => b.theme).filter(Boolean));
@@ -499,7 +567,8 @@ function renderStats() {
   document.getElementById('sv-pct').textContent = pct + '%';
   document.getElementById('sv-pages').textContent = totalPages ? totalPages.toLocaleString() : '—';
   document.getElementById('sv-pages-read').textContent = readPages ? readPages.toLocaleString() : '—';
-  document.getElementById('sv-spend').textContent = booksWithPrice.length ? totalSpend.toFixed(2) + ' €' : '—';
+  document.getElementById('sv-spend').textContent = purchasedWithPrice.length ? totalSpend.toFixed(2) + ' €' : '—';
+  document.getElementById('sv-potential').textContent = allWithPrice.length ? potentialSpend.toFixed(2) + ' €' : '—';
   document.getElementById('sv-authors').textContent = authors.size;
   document.getElementById('sv-themes').textContent = themes.size;
 
@@ -587,7 +656,7 @@ function showToast(msg, type = '') {
 
 
 // ─── EXPORT / IMPORT ─────────────────────────────────────────
-document.getElementById('exportBtn').addEventListener('click', () => {
+document.getElementById('exportBtn').addEventListener('click', async () => {
   const data = JSON.stringify(books, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -614,7 +683,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       if (!Array.isArray(imported)) throw new Error('Formato inválido');
       if (!confirm(`Se importarán ${imported.length} libros. Esto sustituirá tu biblioteca actual. ¿Continuar?`)) return;
       books = imported;
-      saveBooks();
+      await saveBooks();
       populateThemeFilter();
       renderLibrary();
       showToast(`${imported.length} libros importados correctamente ✓`, 'success');
@@ -627,6 +696,4 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 });
 
 // ─── INIT ────────────────────────────────────────────────────
-loadBooks();
-populateThemeFilter();
-renderLibrary();
+loadBooks(); // async - populateThemeFilter and renderLibrary called inside
